@@ -51,15 +51,10 @@ class BoardWidget(QWidget):
         self.board_origin_x = (widget_width - grid_size) / 2
         self.board_origin_y = (widget_height - grid_size) / 2
 
-        # --- Draw Circular Background/Boundary ---
-        # The background can be a circle slightly larger than the grid
-        board_bg_radius = grid_size / 2 + self.cell_size / 2 # Extend to cover outer intersection points
-        painter.save() # Save painter state
-        painter.translate(widget_width / 2, widget_height / 2) # Center of the widget
-        painter.setBrush(QBrush(QColor(222, 184, 135))) # Light wood color
-        painter.setPen(Qt.NoPen) # No border for the background circle itself
-        painter.drawEllipse(QPointF(0, 0), board_bg_radius, board_bg_radius)
-        painter.restore() # Restore painter state
+        # --- Draw Rectangular Background ---
+        # This rectangle covers the area of the grid.
+        painter.fillRect(self.board_origin_x, self.board_origin_y, 
+                         grid_size, grid_size, QColor(222, 184, 135))
 
         # --- Draw Grid Lines ---
         painter.save()
