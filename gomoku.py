@@ -1,12 +1,15 @@
+import random # Added for AI
 DEFAULT_BOARD_SIZE = 15
 
 class GomokuGame:
-    def __init__(self, board_size=None):
+    def __init__(self, board_size=None, game_mode=None, ai_difficulty=None):
         """Initializes the Gomoku game."""
         self.board_size_internal = board_size if board_size is not None else DEFAULT_BOARD_SIZE
         self.board = self._create_board()
         self.current_player = 'X'
         self.game_over = False
+        self.game_mode = game_mode
+        self.ai_difficulty = ai_difficulty
 
     def _create_board(self):
         """Creates an empty game board based on internal board size."""
@@ -67,11 +70,57 @@ class GomokuGame:
         else:
             self.current_player = 'X'
 
-    def reset_game(self):
+    def reset_game(self, game_mode=None, ai_difficulty=None):
         """Resets the game to its initial state."""
         self.board = self._create_board()
         self.current_player = 'X'
         self.game_over = False
+        self.game_mode = game_mode
+        self.ai_difficulty = ai_difficulty
+
+    def make_ai_move_easy(self):
+        """Makes a move for the AI, preferring cells adjacent to existing stones."""
+        if self.game_over:
+            return False
+
+        priority_empty_cells = []
+        all_empty_cells = []
+
+        for r in range(self.board_size_internal):
+            for c in range(self.board_size_internal):
+                if self.board[r][c] == ' ':
+                    all_empty_cells.append((r, c))
+                    is_priority = False
+                    # Check neighbors
+                    for dr in range(-1, 2):
+                        for dc in range(-1, 2):
+                            if dr == 0 and dc == 0:
+                                continue # Skip the cell itself
+                            
+                            nr, nc = r + dr, c + dc
+                            
+                            # Check bounds
+                            if 0 <= nr < self.board_size_internal and \
+                               0 <= nc < self.board_size_internal:
+                                if self.board[nr][nc] != ' ': # Neighbor has a stone
+                                    priority_empty_cells.append((r, c))
+                                    is_priority = True
+                                    break # Found a stone, (r,c) is priority
+                        if is_priority:
+                            break # Move to next empty cell
+        
+        chosen_move = None
+        if priority_empty_cells:
+            chosen_move = random.choice(priority_empty_cells)
+        elif all_empty_cells:
+            chosen_move = random.choice(all_empty_cells)
+        else:
+            return False # No moves possible
+
+        if chosen_move:
+            row, col = chosen_move
+            return self.make_move(row, col)
+        return False # Should not be reached if all_empty_cells logic is correct
 
 # Functions below are for terminal interaction and will remain separate.
 # These functions can use the DEFAULT_BOARD_SIZE or take the size from the game instance.

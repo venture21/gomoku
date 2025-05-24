@@ -46,3 +46,53 @@ h1 {
 #new-game-button:hover {
     background-color: #0056b3;
 }
+
+/* Styles for Mode Selection */
+#mode-selection-area {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    text-align: center; /* Center align the content of this div */
+}
+
+#mode-selection-area h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+.mode-group {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px dashed #ddd;
+    border-radius: 4px;
+    text-align: left; /* Align text to left within each group for better readability */
+}
+
+.mode-group label { /* General label styling */
+    margin-right: 10px;
+}
+
+.difficulty-group {
+    margin-top: 5px;
+    padding-left: 20px; /* Indent difficulty options */
+}
+
+.difficulty-group label { /* Specific for difficulty labels if needed */
+    margin-right: 5px;
+}
+
+.difficulty-group input[type="radio"] {
+    margin-right: 3px;
+}
+
+/* Style for "Coming Soon" labels/options */
+.coming-soon {
+    color: #999;
+    font-style: italic;
+}
+
+input[type="radio"]:disabled + label.coming-soon {
+    cursor: not-allowed;
+}

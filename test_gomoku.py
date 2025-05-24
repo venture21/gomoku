@@ -198,11 +198,189 @@ class TestGomoku(unittest.TestCase):
         self.assertEqual(game.board[0][1], ' ', "Cell (0,1) should be empty after reset")
         self.assertEqual(game.current_player, 'X', "Current player should be 'X' after reset")
         self.assertFalse(game.game_over, "game_over should be False after reset")
+        self.assertIsNone(game.game_mode, "game_mode should be None after default reset")
+        self.assertIsNone(game.ai_difficulty, "ai_difficulty should be None after default reset")
         
         # Check if board is entirely empty
         for r in range(game.board_size_internal):
             for c in range(game.board_size_internal):
                 self.assertEqual(game.board[r][c], ' ', f"Cell ({r},{c}) should be empty after reset.")
+
+    def test_game_mode_attributes(self):
+        game = GomokuGame(game_mode="1P", ai_difficulty="Easy")
+        self.assertEqual(game.game_mode, "1P")
+        self.assertEqual(game.ai_difficulty, "Easy")
+
+        game.reset_game(game_mode="2P", ai_difficulty="Hard") # Reset with new mode and difficulty
+        self.assertEqual(game.game_mode, "2P")
+        self.assertEqual(game.ai_difficulty, "Hard")
+        
+        game.reset_game(game_mode="1P") # Reset with new mode, difficulty becomes None by default in reset
+        self.assertEqual(game.game_mode, "1P")
+        self.assertIsNone(game.ai_difficulty) 
+
+        game.reset_game() # Reset to complete defaults
+        self.assertIsNone(game.game_mode)
+        self.assertIsNone(game.ai_difficulty)
+
+    def test_make_ai_move_easy(self):
+        # Test basic move on an EMPTY board (fallback to all_empty_cells)
+        game = GomokuGame(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O' # AI is 'O'
+        initial_empty_cells = sum(row.count(' ') for row in game.board)
+        
+        move_made = game.make_ai_move_easy()
+        self.assertTrue(move_made, "AI should make a move on an empty board")
+        current_empty_cells = sum(row.count(' ') for row in game.board)
+        self.assertEqual(current_empty_cells, initial_empty_cells - 1, "One stone should be placed on empty board")
+        self.assertEqual(game.current_player, 'O', "Current player should remain AI after its move")
+
+        # Test Prioritized Moves (adjacent to existing stone)
+        game.reset_game(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O' # AI is 'O'
+        # Place a stone for context
+        px, py = 7, 7
+        game.board[px][py] = 'X' # Opponent's stone
+        
+        move_made_priority = game.make_ai_move_easy()
+        self.assertTrue(move_made_priority, "AI should make a priority move")
+        
+        ai_move_r, ai_move_c = -1, -1
+        found_ai_move = False
+        for r_idx, row_val in enumerate(game.board):
+            for c_idx, cell_val in enumerate(row_val):
+                if cell_val == 'O':
+                    ai_move_r, ai_move_c = r_idx, c_idx
+                    found_ai_move = True
+                    break
+            if found_ai_move:
+                break
+        
+        self.assertTrue(found_ai_move, "AI move ('O') should be found on the board")
+        
+        is_adjacent = False
+        for dr in range(-1, 2):
+            for dc in range(-1, 2):
+                if dr == 0 and dc == 0: continue
+                if ai_move_r == px + dr and ai_move_c == py + dc:
+                    is_adjacent = True
+                    break
+            if is_adjacent: break
+        self.assertTrue(is_adjacent, f"AI move ({ai_move_r},{ai_move_c}) should be adjacent to opponent stone at ({px},{py})")
+
+
+        # Test Fallback to Any Empty Cell (when priority cells are blocked)
+        # Using a 5x5 board for simplicity in this specific scenario
+        game_fallback = GomokuGame(board_size=5, game_mode="1P", ai_difficulty="Easy")
+        game_fallback.current_player = 'X' # AI is 'X' this time
+        
+        # Setup: opponent 'O' places a stone, AI 'X' surrounds it, then opponent 'O' blocks all adjacencies
+        # This setup is a bit contrived to force a specific scenario
+        # Let's place a stone at (2,2) for AI
+        center_r, center_c = 2,2
+        game_fallback.board[center_r][center_c] = 'O' # Opponent stone
+
+        # Fill all adjacent cells to (2,2) with AI's *own* stones - this is not the goal.
+        # Goal: Opponent stone at (2,2), AI is 'X'. All cells adjacent to (2,2) are taken by 'O'.
+        # Other cells like (0,0) are empty. AI ('X') should play in (0,0).
+        game_fallback.reset_game(board_size=5, game_mode="1P", ai_difficulty="Easy") # Fresh board
+        game_fallback.current_player = 'X' # AI is 'X'
+        
+        opponent_stone_r, opponent_stone_c = 2, 2
+        game_fallback.board[opponent_stone_r][opponent_stone_c] = 'O' # Central opponent stone
+        
+        # Block all cells adjacent to opponent_stone with 'O' as well
+        for dr_block in range(-1, 2):
+            for dc_block in range(-1, 2):
+                if dr_block == 0 and dc_block == 0: continue
+                nr, nc = opponent_stone_r + dr_block, opponent_stone_c + dc_block
+                if 0 <= nr < 5 and 0 <= nc < 5:
+                    game_fallback.board[nr][nc] = 'O' 
+        
+        # Ensure (0,0) is empty for AI ('X') to pick
+        game_fallback.board[0][0] = ' ' 
+        
+        move_made_fallback = game_fallback.make_ai_move_easy()
+        self.assertTrue(move_made_fallback, "AI should make a fallback move")
+        
+        ai_fallback_r, ai_fallback_c = -1, -1
+        found_fallback_move = False
+        for r_idx, row_val in enumerate(game_fallback.board):
+            for c_idx, cell_val in enumerate(row_val):
+                if cell_val == 'X': # AI is 'X'
+                    ai_fallback_r, ai_fallback_c = r_idx, c_idx
+                    found_fallback_move = True
+                    break
+            if found_fallback_move: break
+            
+        self.assertTrue(found_fallback_move, "AI fallback move ('X') should be found")
+        # Check it's not adjacent to the original 'O' at (2,2)
+        is_adj_to_center_o = False
+        for dr in range(-1, 2):
+            for dc in range(-1, 2):
+                if dr == 0 and dc == 0: continue
+                if ai_fallback_r == opponent_stone_r + dr and ai_fallback_c == opponent_stone_c + dc:
+                    is_adj_to_center_o = True; break
+            if is_adj_to_center_o: break
+        self.assertFalse(is_adj_to_center_o, 
+                         f"AI fallback move ({ai_fallback_r},{ai_fallback_c}) should NOT be adjacent to central 'O' at ({opponent_stone_r},{opponent_stone_c}) because all those spots were blocked.")
+        self.assertEqual((ai_fallback_r, ai_fallback_c), (0,0), "AI should have picked the only available non-priority spot (0,0)")
+
+
+        # Test on a nearly full board
+        game.reset_game(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O'
+        # Fill all but one cell
+        last_empty_row, last_empty_col = -1, -1
+        for r in range(game.board_size_internal):
+            for c in range(game.board_size_internal):
+                if r == game.board_size_internal -1 and c == game.board_size_internal -1 :
+                    last_empty_row, last_empty_col = r,c
+                    continue # Leave last cell empty
+                game.board[r][c] = 'X' # Fill with opponent's stones
+        
+        self.assertEqual(game.board[last_empty_row][last_empty_col], ' ') # Confirm it's empty
+        move_made_on_nearly_full = game.make_ai_move_easy()
+        self.assertTrue(move_made_on_nearly_full, "AI should make a move on a nearly full board")
+        self.assertEqual(game.board[last_empty_row][last_empty_col], 'O', "AI should take the last empty cell")
+        self.assertEqual(game.current_player, 'O')
+
+        # Test on a completely full board
+        game.reset_game(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O'
+        for r in range(game.board_size_internal):
+            for c in range(game.board_size_internal):
+                game.board[r][c] = 'X' # Fill all cells
+        
+        move_made_on_full = game.make_ai_move_easy()
+        self.assertFalse(move_made_on_full, "AI should not make a move on a full board")
+        # Verify board is unchanged (no 'O' placed)
+        o_stones = sum(row.count('O') for row in game.board)
+        self.assertEqual(o_stones, 0, "No 'O' stones should be on a full board after AI attempts move")
+        self.assertEqual(game.current_player, 'O')
+
+        # Test randomness (simplified check - moves should generally differ)
+        # This test is probabilistic and might occasionally fail even if logic is correct.
+        # A more robust test would analyze distribution or require many trials.
+        if game.board_size_internal >= 3: # Ensure enough space for varied moves
+            game.reset_game(game_mode="1P", ai_difficulty="Easy", board_size=3) # Use smaller board for this test
+            game.current_player = 'O'
+            moves = set()
+            for _ in range(5): # Make 5 AI moves on an empty 3x3 board
+                game.reset_game(game_mode="1P", ai_difficulty="Easy", board_size=3)
+                game.current_player = 'O'
+                if game.make_ai_move_easy():
+                    # Find where the move was made
+                    for r_idx, row_val in enumerate(game.board):
+                        for c_idx, cell_val in enumerate(row_val):
+                            if cell_val == 'O':
+                                moves.add((r_idx, c_idx))
+                                break
+                        if (r_idx, c_idx) in moves: break 
+            # Expect more than 1 unique move if board is 3x3 (9 cells) and 5 attempts
+            # This is a weak test but can catch if AI always picks e.g. (0,0)
+            self.assertTrue(len(moves) > 1, "AI moves should show some variation on a 3x3 board over 5 trials")
+
 
     def test_board_size_default(self):
         game = GomokuGame()
