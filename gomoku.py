@@ -11,6 +11,7 @@ class GomokuGame:
         self.game_mode = game_mode
         self.ai_difficulty = ai_difficulty
         self.WIN_LENGTH = 5 # Length needed to win
+        self.SEARCH_DEPTH = 4 # Default search depth for Hard AI
 
     def _create_board(self):
         """Creates an empty game board based on internal board size."""
@@ -448,9 +449,9 @@ class GomokuGame:
         if self.game_over:
             return False
 
-        SEARCH_DEPTH = 4 # Depth for Minimax (e.g., 2 full moves)
+        # SEARCH_DEPTH is now self.SEARCH_DEPTH
         best_move = None
-        best_score = -float('inf')
+        best_score = -float('inf') # Initialize best_score to a very low value
         ai_player_symbol = self.current_player
 
         empty_cells = []
@@ -471,21 +472,29 @@ class GomokuGame:
             temp_board[r][c] = ai_player_symbol # Simulate AI's move
 
             # Call minimax for the opponent's turn (minimizing player)
-            # Depth is SEARCH_DEPTH - 1 because one ply (AI's current move) is already made.
-            move_score = self._minimax(SEARCH_DEPTH - 1, False, -float('inf'), float('inf'), temp_board, ai_player_symbol)
+            # Depth is self.SEARCH_DEPTH - 1 because one ply (AI's current move) is already made.
+            move_score = self._minimax(self.SEARCH_DEPTH - 1, False, -float('inf'), float('inf'), temp_board, ai_player_symbol)
             
-            if move_score > best_score:
+            # print(f"Move ({r},{c}) scored: {move_score}") # Optional debug
+
+            if best_move is None or move_score > best_score:
                 best_score = move_score
                 best_move = (r, c)
-            # Optional: if move_score == best_score, add random chance to pick this move
-            # elif move_score == best_score:
-            #     if random.random() < 0.5: # 50% chance to switch to this equally good move
-            #         best_move = (r,c)
+            # Optional: if move_score == best_score and best_move is not None, add random chance to pick this move
+            # This part of the original comment is slightly confusing, shuffle handles multiple 'best' scores.
+            # If we wanted to prefer later equally good moves, we'd use 'move_score >= best_score'.
+            # The current `random.shuffle(empty_cells)` already helps break ties randomly.
 
-        if best_move:
+        # if best_move is not None: # Optional debug
+        #    print(f"Hard AI chose: {best_move} with score {best_score}")
+        # else:
+        #    print("Hard AI found no best_move. This should ideally not happen with empty cells.")
+
+        if best_move is not None: # Check if a best_move was found
             return self.make_move(best_move[0], best_move[1])
         else:
-            # Fallback if no move improves score (should ideally not happen if empty cells exist)
+            # Fallback if no move improves score or if all moves are losing (best_score remains -inf).
+            # This ensures AI always makes a move if one is available.
             # or if all moves lead to immediate loss (best_score remains -inf, which is unlikely if minimax works)
             print("Hard AI: Minimax found no best move or error, falling back to Normal AI.")
             return self.make_ai_move_normal()
