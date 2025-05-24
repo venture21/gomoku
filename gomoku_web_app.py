@@ -84,25 +84,30 @@ async def api_make_move(move: MoveRequest):
                     # Potentially AI's turn
                     if game.game_mode == "1P":
                         game.switch_player() # Switch to AI ('O')
+                        ai_move_made = False # Reset for AI's attempt
 
-                        if game.ai_difficulty == "Easy" and not game.game_over:
-                            ai_move_made = game.make_ai_move_easy()
-                            ai_move_made_this_turn = True
+                        if not game.game_over: # Check if game didn't end from human's move
+                            if game.ai_difficulty == "Easy":
+                                ai_move_made = game.make_ai_move_easy()
+                                ai_move_made_this_turn = True
+                            elif game.ai_difficulty == "Medium": # Matching "Medium" from frontend
+                                ai_move_made = game.make_ai_move_normal()
+                                ai_move_made_this_turn = True
+                            # Add elif for "Hard" in future if needed
                             
                             if ai_move_made:
                                 if game.check_win(): # AI wins
                                     game.game_over = True
-                                    # currentPlayer in state dict will be AI's display name
                                     message = f"Player {get_game_state_dict(game)['currentPlayer']} (AI) wins!"
                                 elif game.check_draw(): # Draw after AI move
                                     game.game_over = True
                                     message = "It's a draw!"
-                                # AI made a move, current_player is AI. Will be switched back if game not over.
-                            else: # AI couldn't make a move
-                                if not game.game_over : # Avoid overriding win/draw from human move
-                                    message = "AI could not make a move (board might be full)."
+                                # current_player is AI at this point.
+                            elif ai_move_made_this_turn: # AI attempted a move but couldn't (e.g. board full)
+                                 if not game.game_over: # If game not already over by draw from human move
+                                      message = "AI could not make a move."
                         
-                        # Switch back to Human ('X') if game is not over
+                        # Switch back to Human ('X') if game is not over (and it was AI's turn)
                         if not game.game_over:
                             game.switch_player() 
                     
