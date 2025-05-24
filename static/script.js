@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update currentDifficulty based on which radio is checked
             if (radioDifficultyEasy.checked) currentDifficulty = 'Easy';
             else if (radioDifficultyMedium.checked) currentDifficulty = 'Medium';
-            // else if (radioDifficultyHard.checked) currentDifficulty = 'Hard'; // For later
+            else if (radioDifficultyHard.checked) currentDifficulty = 'Hard';
         } else if (radio2PMode.checked) { // radio2PMode is currently disabled in HTML
             currentGameMode = '2P';
             difficultySelectionDiv.style.display = 'none'; // Hide difficulty options for 2P
@@ -59,7 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Mode: ${currentGameMode}, Difficulty: ${currentDifficulty}`);
         });
     }
-    // if(radioDifficultyHard) radioDifficultyHard.addEventListener('change', ...); // For future Hard mode
+    if (radioDifficultyHard) { // Check if element exists
+        radioDifficultyHard.addEventListener('change', () => {
+            if (radioDifficultyHard.checked) {
+                currentDifficulty = 'Hard';
+            }
+            updateModeSelectionState();
+            console.log(`Mode: ${currentGameMode}, Difficulty: ${currentDifficulty}`);
+        });
+    }
 
 
     async function fetchGameStateAndDraw() {
@@ -245,12 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Log selected mode and difficulty
         console.log(`Starting new game: Mode=${currentGameMode}, Difficulty=${currentDifficulty}`);
 
-        // Alert for unimplemented modes/difficulties - keeping for Hard/2P but not for Medium
-        if ( (currentGameMode === '1P' && currentDifficulty === 'Hard') ||
-             (currentGameMode === '2P') ) {
-            alert('Selected mode or difficulty is not yet implemented. Defaulting to available options or backend default.');
+        // Alert for unimplemented modes/difficulties - keeping for 2P but not for Hard
+        if (currentGameMode === '2P') {
+            alert('2-Player mode is not yet implemented. Defaulting to available options or backend default.');
             // Note: Backend will still receive selected values.
-            // If strict prevention is needed for these modes, add a 'return;' here.
+            // If strict prevention is needed for 2P mode, add a 'return;' here.
         }
 
 

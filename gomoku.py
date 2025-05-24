@@ -259,6 +259,237 @@ class GomokuGame:
         # Priority 5: Fallback to "Easy" AI logic
         return self.make_ai_move_easy()
 
+    def _evaluate_line_segment_on_board(self, line_coords, player_symbol, board_state):
+        """
+        Evaluates a single line segment on a given board_state for the given player.
+        Returns a dictionary with counts of player stones, opponent stones, and empty cells.
+        """
+        counts = {
+            'player_stones': 0,
+            'opponent_stones': 0,
+            'empty_cells': 0
+        }
+        opponent_symbol = self._get_opponent_symbol(player_symbol)
+
+        for r_coord, c_coord in line_coords:
+            # This check assumes line_coords are already validated to be within board_state dimensions
+            cell_content = board_state[r_coord][c_coord]
+            if cell_content == player_symbol:
+                counts['player_stones'] += 1
+            elif cell_content == opponent_symbol:
+                counts['opponent_stones'] += 1
+            else: # Empty cell
+                counts['empty_cells'] += 1
+        return counts
+
+    def _evaluate_board_state(self, board_state, ai_player_symbol):
+        """
+        Evaluates the given board_state from the perspective of ai_player_symbol.
+        Positive scores favor ai_player_symbol.
+        """
+        total_score = 0
+        opponent_symbol = self._get_opponent_symbol(ai_player_symbol)
+        
+        # Iterate through all possible lines of WIN_LENGTH
+        
+        # Horizontal lines
+        for r in range(self.board_size_internal):
+            for c in range(self.board_size_internal - self.WIN_LENGTH + 1):
+                line_coords = [(r, c + i) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+                
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+                
+                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+
+        # Vertical lines
+        for c in range(self.board_size_internal):
+            for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
+                line_coords = [(r + i, c) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+
+                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+
+        # Diagonal (Top-Left to Bottom-Right)
+        for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
+            for c in range(self.board_size_internal - self.WIN_LENGTH + 1):
+                line_coords = [(r + i, c + i) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+
+                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+                
+        # Diagonal (Top-Right to Bottom-Left)
+        for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
+            for c in range(self.WIN_LENGTH - 1, self.board_size_internal):
+                line_coords = [(r + i, c - i) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+
+                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+                
+        return total_score
+
+    def _get_terminal_score(self, board_state, ai_player_symbol):
+        """
+        Checks if the given board_state is a terminal state (win/loss).
+        Returns a high score for AI win, low score for opponent win, else None.
+        """
+        opponent_symbol = self._get_opponent_symbol(ai_player_symbol)
+
+        # Horizontal lines
+        for r in range(self.board_size_internal):
+            for c in range(self.board_size_internal - self.WIN_LENGTH + 1):
+                line_coords = [(r, c + i) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000 
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+        # Vertical lines
+        for c in range(self.board_size_internal):
+            for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
+                line_coords = [(r + i, c) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+        # Diagonal (Top-Left to Bottom-Right)
+        for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
+            for c in range(self.board_size_internal - self.WIN_LENGTH + 1):
+                line_coords = [(r + i, c + i) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+        # Diagonal (Top-Right to Bottom-Left)
+        for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
+            for c in range(self.WIN_LENGTH - 1, self.board_size_internal):
+                line_coords = [(r + i, c - i) for i in range(self.WIN_LENGTH)]
+                eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
+                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
+                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+        return None # No win/loss found
+
+    def _minimax(self, depth, is_maximizing_player, alpha, beta, board_state, ai_player_symbol):
+        terminal_score = self._get_terminal_score(board_state, ai_player_symbol)
+        if terminal_score is not None:
+            # Adjust score by depth: prefer faster wins, slower losses
+            return terminal_score + depth if terminal_score > 0 else terminal_score - depth
+
+        empty_cells_exist = any(' ' in row for row in board_state)
+        if not empty_cells_exist: # Draw
+            return 0 
+        
+        if depth == 0:
+            return self._evaluate_board_state(board_state, ai_player_symbol)
+
+        current_sim_player_symbol = ai_player_symbol if is_maximizing_player else self._get_opponent_symbol(ai_player_symbol)
+        
+        empty_cells_coords = []
+        for r_idx in range(self.board_size_internal):
+            for c_idx in range(self.board_size_internal):
+                if board_state[r_idx][c_idx] == ' ':
+                    empty_cells_coords.append((r_idx, c_idx))
+        
+        # Consider shuffling empty_cells_coords for less predictable AI if desired,
+        # but for testing, a fixed order might be better.
+        # random.shuffle(empty_cells_coords) # Optional
+
+        if is_maximizing_player:
+            max_eval = -float('inf')
+            for r, c in empty_cells_coords:
+                temp_board = [row[:] for row in board_state] # Create a copy
+                temp_board[r][c] = current_sim_player_symbol
+                evaluation = self._minimax(depth - 1, False, alpha, beta, temp_board, ai_player_symbol)
+                max_eval = max(max_eval, evaluation)
+                alpha = max(alpha, evaluation)
+                if beta <= alpha:
+                    break # Prune
+            return max_eval
+        else: # Minimizing player
+            min_eval = float('inf')
+            for r, c in empty_cells_coords:
+                temp_board = [row[:] for row in board_state] # Create a copy
+                temp_board[r][c] = current_sim_player_symbol
+                evaluation = self._minimax(depth - 1, True, alpha, beta, temp_board, ai_player_symbol)
+                min_eval = min(min_eval, evaluation)
+                beta = min(beta, evaluation)
+                if beta <= alpha:
+                    break # Prune
+            return min_eval
+
+    def make_ai_move_hard(self):
+        """Makes a move for the AI using the Minimax algorithm."""
+        if self.game_over:
+            return False
+
+        SEARCH_DEPTH = 4 # Depth for Minimax (e.g., 2 full moves)
+        best_move = None
+        best_score = -float('inf')
+        ai_player_symbol = self.current_player
+
+        empty_cells = []
+        for r_idx in range(self.board_size_internal):
+            for c_idx in range(self.board_size_internal):
+                if self.board[r_idx][c_idx] == ' ':
+                    empty_cells.append((r_idx, c_idx))
+        
+        if not empty_cells:
+            return False # No moves possible
+
+        # Shuffle empty_cells to add some unpredictability for equally scored moves
+        # For performance testing or debugging, one might comment this out to get deterministic behavior.
+        random.shuffle(empty_cells) 
+
+        for r, c in empty_cells:
+            temp_board = [row[:] for row in self.board] # Create a deep copy
+            temp_board[r][c] = ai_player_symbol # Simulate AI's move
+
+            # Call minimax for the opponent's turn (minimizing player)
+            # Depth is SEARCH_DEPTH - 1 because one ply (AI's current move) is already made.
+            move_score = self._minimax(SEARCH_DEPTH - 1, False, -float('inf'), float('inf'), temp_board, ai_player_symbol)
+            
+            if move_score > best_score:
+                best_score = move_score
+                best_move = (r, c)
+            # Optional: if move_score == best_score, add random chance to pick this move
+            # elif move_score == best_score:
+            #     if random.random() < 0.5: # 50% chance to switch to this equally good move
+            #         best_move = (r,c)
+
+        if best_move:
+            return self.make_move(best_move[0], best_move[1])
+        else:
+            # Fallback if no move improves score (should ideally not happen if empty cells exist)
+            # or if all moves lead to immediate loss (best_score remains -inf, which is unlikely if minimax works)
+            print("Hard AI: Minimax found no best move or error, falling back to Normal AI.")
+            return self.make_ai_move_normal()
+
 # Functions below are for terminal interaction and will remain separate.
 # These functions can use the DEFAULT_BOARD_SIZE or take the size from the game instance.
 

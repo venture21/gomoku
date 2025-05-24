@@ -93,7 +93,10 @@ async def api_make_move(move: MoveRequest):
                             elif game.ai_difficulty == "Medium": # Matching "Medium" from frontend
                                 ai_move_made = game.make_ai_move_normal()
                                 ai_move_made_this_turn = True
-                            # Add elif for "Hard" in future if needed
+                            elif game.ai_difficulty == "Hard": # New condition
+                                ai_move_made = game.make_ai_move_hard()
+                                ai_move_made_this_turn = True
+                            # else: # No other difficulties defined yet
                             
                             if ai_move_made:
                                 if game.check_win(): # AI wins

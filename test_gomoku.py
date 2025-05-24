@@ -433,6 +433,70 @@ class TestGomoku(unittest.TestCase):
         # H: 1 line. V: 1 line. D1 (TL-BR): 1 line. D2 (TR-BL): 0 lines. Total = 3.
         self.assertEqual(len(lines_corner), 3, "Corner cell (0,0) should have 3 lines of length 5 through it")
 
+    def test_evaluate_board_state(self):
+        game = GomokuGame(board_size=7) # Using a 7x7 board for easier setup
+        ai_symbol = 'X'
+        opponent_symbol = 'O'
+
+        # Test AI Win
+        board_state_ai_wins = [[' '] * 7 for _ in range(7)]
+        for i in range(5): board_state_ai_wins[1][1+i] = ai_symbol
+        self.assertGreaterEqual(game._evaluate_board_state(board_state_ai_wins, ai_symbol), 100000)
+
+        # Test Opponent Win
+        board_state_opponent_wins = [[' '] * 7 for _ in range(7)]
+        for i in range(5): board_state_opponent_wins[1][1+i] = opponent_symbol
+        self.assertLessEqual(game._evaluate_board_state(board_state_opponent_wins, ai_symbol), -100000)
+
+        # Test AI Open Four (_XXXX_)
+        board_state_ai_open_four = [[' '] * 7 for _ in range(7)]
+        board_state_ai_open_four[1][0] = ' '
+        for i in range(4): board_state_ai_open_four[1][1+i] = ai_symbol
+        board_state_ai_open_four[1][5] = ' '
+        # This setup is '_XXXX ' which is one empty cell, so it's 4 stones, 1 empty. Score = 5000
+        self.assertEqual(game._evaluate_board_state(board_state_ai_open_four, ai_symbol), 5000)
+
+
+        # Test Opponent Open Four (_OOOO_)
+        board_state_opponent_open_four = [[' '] * 7 for _ in range(7)]
+        board_state_opponent_open_four[1][0] = ' '
+        for i in range(4): board_state_opponent_open_four[1][1+i] = opponent_symbol
+        board_state_opponent_open_four[1][5] = ' '
+        # Score for ai_symbol should be -10000
+        self.assertEqual(game._evaluate_board_state(board_state_opponent_open_four, ai_symbol), -10000)
+
+
+        # Test AI Open Three (_XXX_ _)
+        board_state_ai_open_three = [[' '] * 7 for _ in range(7)]
+        board_state_ai_open_three[1][0] = ' '
+        for i in range(3): board_state_ai_open_three[1][1+i] = ai_symbol
+        board_state_ai_open_three[1][4] = ' '
+        board_state_ai_open_three[1][5] = ' '
+        # Score = 200
+        self.assertEqual(game._evaluate_board_state(board_state_ai_open_three, ai_symbol), 200)
+
+        # Test Opponent Open Three (_OOO_ _)
+        board_state_opponent_open_three = [[' '] * 7 for _ in range(7)]
+        board_state_opponent_open_three[1][0] = ' '
+        for i in range(3): board_state_opponent_open_three[1][1+i] = opponent_symbol
+        board_state_opponent_open_three[1][4] = ' '
+        board_state_opponent_open_three[1][5] = ' '
+        # Score for ai_symbol should be -400
+        self.assertEqual(game._evaluate_board_state(board_state_opponent_open_three, ai_symbol), -400)
+
+        # Test Neutral/Balanced Board (empty)
+        board_state_empty = [[' '] * 7 for _ in range(7)]
+        self.assertEqual(game._evaluate_board_state(board_state_empty, ai_symbol), 0)
+        
+        # Test Neutral/Balanced Board (some pieces, no threats)
+        board_state_neutral = [[' '] * 7 for _ in range(7)]
+        board_state_neutral[0][0] = ai_symbol
+        board_state_neutral[0][1] = opponent_symbol
+        board_state_neutral[1][0] = opponent_symbol
+        board_state_neutral[1][1] = ai_symbol
+        self.assertEqual(game._evaluate_board_state(board_state_neutral, ai_symbol), 0) # Expect 0 as no patterns of length 2+ are scored for this simple eval
+
+
     def test_evaluate_line_segment(self):
         game = GomokuGame(board_size=5) # Use 5x5 board
         ai_symbol = 'O'
@@ -588,6 +652,79 @@ class TestGomoku(unittest.TestCase):
         game.current_player = 'O'
         game.board = [['X','O','X'],['O','X','O'],['X','O','X']]
         self.assertFalse(game.make_ai_move_normal(), "AI should not move on a full board")
+
+    def test_make_ai_move_hard(self):
+        # Test Obvious Win in 1
+        game = GomokuGame(board_size=7, game_mode="1P", ai_difficulty="Hard")
+        game.current_player = 'X' # AI is 'X'
+        game.board = [[' '] * 7 for _ in range(7)]
+        for i in range(4): game.board[1][1+i] = 'X' # _XXXX
+        game.board[1][0] = ' ' # Winning spot
+        game.board[1][5] = ' ' # Other side
+        
+        self.assertTrue(game.make_ai_move_hard())
+        # AI should play at (1,0) or (1,5). Minimax might pick based on eval of post-win state or first available.
+        # Given eval, winning is 100000, so it should pick one.
+        self.assertTrue(game.board[1][0] == 'X' or game.board[1][5] == 'X', "AI should make winning move")
+
+        # Test Block Opponent's Win in 1
+        game.reset_game(board_size=7, game_mode="1P", ai_difficulty="Hard")
+        game.current_player = 'X' # AI is 'X'
+        game.board = [[' '] * 7 for _ in range(7)]
+        for i in range(4): game.board[1][1+i] = 'O' # _OOOO
+        game.board[1][0] = ' ' # Blocking spot
+        game.board[1][5] = ' ' # Other side
+        
+        self.assertTrue(game.make_ai_move_hard())
+        # AI should play at (1,0) or (1,5) to block.
+        self.assertTrue(game.board[1][0] == 'X' or game.board[1][5] == 'X', "AI should block opponent's win")
+
+        # Test Forced Win (2-ply for AI win) - AI 'X'
+        # Scenario: _ X X _ X _ -> AI plays at (2,3) creating X X X X _
+        # Board:  . . . . . . .
+        #         . . X X . X .   (AI 'X' at (1,2), (1,3), (1,5))
+        #         . . . . . . .
+        # AI needs to play at (1,4) to make X X X X X
+        # Or AI plays at (1,1) to make X X X X . X
+        # Let's use a clearer one: _ X X X _ X _  -> AI plays at (1,0) -> X X X X _ X _ -> Opponent blocks (1,4) -> X X X X O X -> AI wins (1,5)
+        # Or AI plays at (1,4) -> _ X X X X X _ -> AI wins
+        game.reset_game(board_size=7, game_mode="1P", ai_difficulty="Hard")
+        game.current_player = 'X' # AI is 'X'
+        game.board = [[' '] * 7 for _ in range(7)]
+        # Setup: . X X X . X .  (Indices: 1,2,3, ,5) AI needs to play at 4 for immediate win.
+        # This test is similar to obvious win if not careful.
+        # Let's do: . X X . X . -> AI plays at (1,3) -> . X X X X .
+        game.board[1][1] = 'X'; game.board[1][2] = 'X'; game.board[1][4] = 'X';
+        # Expected move: (1,3)
+        self.assertTrue(game.make_ai_move_hard())
+        self.assertEqual(game.board[1][3], 'X', "AI should play (1,3) for forced win")
+
+        # Test AI Avoids Trap / Blocks Opponent's Forced Win
+        # Scenario: Opponent 'O' has . O O . O . AI 'X' to play.
+        # If AI plays at (1,0) -> X O O . O . -> Opponent plays (1,3) -> X O O O O . (Opponent Wins)
+        # If AI plays at (1,5) -> . O O . O X -> Opponent plays (1,3) -> . O O O O X (Opponent Wins)
+        # Correct AI move is (1,3) -> . O O X O . (Blocks immediate threat)
+        game.reset_game(board_size=7, game_mode="1P", ai_difficulty="Hard")
+        game.current_player = 'X' # AI is 'X'
+        game.board = [[' '] * 7 for _ in range(7)]
+        game.board[1][1] = 'O'; game.board[1][2] = 'O'; game.board[1][4] = 'O';
+        
+        self.assertTrue(game.make_ai_move_hard())
+        self.assertEqual(game.board[1][3], 'X', "AI should play (1,3) to block opponent's forced win")
+
+        # Test on Empty Board
+        game.reset_game(board_size=7, game_mode="1P", ai_difficulty="Hard")
+        game.current_player = 'X' # AI 'X'
+        self.assertTrue(game.make_ai_move_hard())
+        # Check that a move was made (count non-empty cells)
+        stone_count = sum(row.count('X') for row in game.board)
+        self.assertEqual(stone_count, 1, "AI should make one move on empty board")
+
+        # Test on Full Board
+        game.reset_game(board_size=3, game_mode="1P", ai_difficulty="Hard") # Smaller board
+        game.current_player = 'X' # AI 'X'
+        game.board = [['O','X','O'],['X','O','X'],['O','X','O']]
+        self.assertFalse(game.make_ai_move_hard(), "AI should not move on a full board (returns False or falls back and returns False)")
 
 
 if __name__ == '__main__':
