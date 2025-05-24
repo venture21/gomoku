@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  gameStatusElement.textContent = "Game Over."; 
             }
         } else {
-            const playerDisplayName = (gameState.currentPlayer === 'X') ? "Black" : "White";
+            const playerDisplayName = gameState.currentPlayer; // API now sends "Black" or "White"
             gameStatusElement.textContent = `Player ${playerDisplayName}'s turn`;
         }
     }

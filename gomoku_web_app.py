@@ -35,7 +35,7 @@ async def read_root(request: Request):
 def get_game_state_dict(game_instance: GomokuGame):
     return {
         "board": game_instance.board,
-        "currentPlayer": game_instance.current_player,
+        "currentPlayer": "Black" if game_instance.current_player == 'X' else "White",
         "gameOver": game_instance.game_over,
         "boardSize": game_instance.board_size_internal
     }
