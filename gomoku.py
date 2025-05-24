@@ -1,12 +1,15 @@
+import random # Added for AI
 DEFAULT_BOARD_SIZE = 15
 
 class GomokuGame:
-    def __init__(self, board_size=None):
+    def __init__(self, board_size=None, game_mode=None, ai_difficulty=None):
         """Initializes the Gomoku game."""
         self.board_size_internal = board_size if board_size is not None else DEFAULT_BOARD_SIZE
         self.board = self._create_board()
         self.current_player = 'X'
         self.game_over = False
+        self.game_mode = game_mode
+        self.ai_difficulty = ai_difficulty
 
     def _create_board(self):
         """Creates an empty game board based on internal board size."""
@@ -67,11 +70,30 @@ class GomokuGame:
         else:
             self.current_player = 'X'
 
-    def reset_game(self):
+    def reset_game(self, game_mode=None, ai_difficulty=None):
         """Resets the game to its initial state."""
         self.board = self._create_board()
         self.current_player = 'X'
         self.game_over = False
+        self.game_mode = game_mode
+        self.ai_difficulty = ai_difficulty
+
+    def make_ai_move_easy(self):
+        """Makes a move for the AI using a simple random strategy."""
+        if self.game_over: # Should not happen if called correctly
+            return False
+
+        available_moves = []
+        for r in range(self.board_size_internal):
+            for c in range(self.board_size_internal):
+                if self.board[r][c] == ' ':
+                    available_moves.append((r, c))
+        
+        if not available_moves:
+            return False # No moves possible (should trigger draw earlier)
+            
+        row, col = random.choice(available_moves)
+        return self.make_move(row, col) # make_move uses self.current_player
 
 # Functions below are for terminal interaction and will remain separate.
 # These functions can use the DEFAULT_BOARD_SIZE or take the size from the game instance.

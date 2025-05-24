@@ -2,7 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gomoku-board');
     const ctx = canvas.getContext('2d');
     const gameStatusElement = document.getElementById('game-status');
-    const newGameButton = document.getElementById('new-game-button'); // Will be used in a later step
+    const newGameButton = document.getElementById('new-game-button');
+
+    // New mode/difficulty elements
+    const radio1PMode = document.getElementById('1p-mode');
+    const radio2PMode = document.getElementById('2p-mode'); // Currently disabled in HTML
+    const difficultySelectionDiv = document.getElementById('difficulty-selection');
+    const radioDifficultyEasy = document.getElementById('difficulty-easy');
+    const radioDifficultyMedium = document.getElementById('difficulty-medium'); // Disabled
+    const radioDifficultyHard = document.getElementById('difficulty-hard');   // Disabled
 
     const PADDING = 20; // Padding around the board
     let CELL_SIZE;      // To be calculated
@@ -11,6 +19,39 @@ document.addEventListener('DOMContentLoaded', () => {
     let BOARD_ORIGIN_Y; // Top-left Y of the grid
     let boardData = [];   // To store the game board state
     let boardSize = 15; // Default, will be updated from backend
+
+    let currentGameMode = '1P'; // Default to 1P
+    let currentDifficulty = 'Easy'; // Default to Easy
+
+    // Function to update mode and difficulty display/state
+    function updateModeSelectionState() {
+        if (radio1PMode.checked) {
+            currentGameMode = '1P';
+            difficultySelectionDiv.style.display = ''; // Show difficulty options
+            // Update currentDifficulty based on which radio is checked
+            if (radioDifficultyEasy.checked) currentDifficulty = 'Easy';
+            // Medium and Hard are disabled, so no need to check them for now
+        } else if (radio2PMode.checked) { // radio2PMode is currently disabled in HTML
+            currentGameMode = '2P';
+            difficultySelectionDiv.style.display = 'none'; // Hide difficulty options for 2P
+            currentDifficulty = null; // No difficulty for 2P mode
+        }
+        console.log(`Mode: ${currentGameMode}, Difficulty: ${currentDifficulty}`); // For debugging
+    }
+
+    // Add event listeners to mode radio buttons
+    radio1PMode.addEventListener('change', updateModeSelectionState);
+    if(radio2PMode) radio2PMode.addEventListener('change', updateModeSelectionState); // Check if element exists
+
+    // Add event listeners to difficulty radio buttons
+    radioDifficultyEasy.addEventListener('change', () => {
+        if (radioDifficultyEasy.checked) currentDifficulty = 'Easy';
+        updateModeSelectionState(); // Call to log and potentially update other UI in future
+    });
+    // Event listeners for Medium/Hard can be added if/when they are enabled
+    // if(radioDifficultyMedium) radioDifficultyMedium.addEventListener('change', ...);
+    // if(radioDifficultyHard) radioDifficultyHard.addEventListener('change', ...);
+
 
     async function fetchGameStateAndDraw() {
         try {
@@ -192,22 +233,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     newGameButton.addEventListener('click', async () => {
+        // Check selected mode and difficulty
+        if (currentGameMode === '1P' && currentDifficulty === 'Easy') {
+            // Proceed with Easy 1P mode
+            console.log(`Starting new game: Mode=${currentGameMode}, Difficulty=${currentDifficulty}`);
+        } else {
+            // Alert for unimplemented modes/difficulties and default or prevent game start
+            alert('Selected mode or difficulty is not yet implemented. The game will start in 1-Player Easy mode (default backend behavior for now).');
+            // For now, we'll let it proceed, and backend will handle it as a default game.
+            // If strict enforcement on frontend is needed:
+            // if (!(currentGameMode === '1P' && currentDifficulty === 'Easy')) {
+            //    alert('Only 1-Player Easy mode is currently implemented.');
+            //    return; // Stop game start
+            // }
+        }
+
         try {
             const response = await fetch('/api/new_game', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                // Send mode and difficulty to backend
+                body: JSON.stringify({ 
+                    game_mode: currentGameMode, 
+                    ai_difficulty: currentDifficulty 
+                }),
             });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            // new_game API returns the fresh game state
             const gameState = await response.json();
             
-            boardData = gameState.board; // Update local board data
-            drawBoard(gameState);        // Redraw
-            updateStatus(gameState);     // Update status
+            boardData = gameState.board;
+            drawBoard(gameState);
+            updateStatus(gameState);
             
         } catch (error) {
             console.error("Failed to start new game:", error);
@@ -215,5 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Initial UI State Setup
+    updateModeSelectionState(); // Call once to set initial state of difficulty div visibility
     fetchGameStateAndDraw(); // Initial fetch and draw
 }); // End of DOMContentLoaded

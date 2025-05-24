@@ -8,6 +8,36 @@
 </head>
 <body>
     <h1>Gomoku</h1>
+
+    <div id="mode-selection-area">
+        <h2>Select Game Mode</h2>
+        
+        <div class="mode-group">
+            <input type="radio" id="1p-mode" name="game_mode" value="1P" checked>
+            <label for="1p-mode">1-Player (vs Computer)</label>
+            
+            <div id="difficulty-selection" class="difficulty-group">
+                <label>Difficulty:</label>
+                <input type="radio" id="difficulty-easy" name="difficulty" value="Easy" checked>
+                <label for="difficulty-easy">Easy</label>
+                
+                <input type="radio" id="difficulty-medium" name="difficulty" value="Medium" disabled>
+                <label for="difficulty-medium" class="coming-soon">Medium (Coming Soon)</label>
+                
+                <input type="radio" id="difficulty-hard" name="difficulty" value="Hard" disabled>
+                <label for="difficulty-hard" class="coming-soon">Hard (Coming Soon)</label>
+            </div>
+        </div>
+        
+        <div class="mode-group">
+            <input type="radio" id="2p-mode" name="game_mode" value="2P" disabled>
+            <label for="2p-mode" class="coming-soon">2-Player (Coming Soon)</label>
+        </div>
+        
+        <!-- Existing New Game button might be moved or its role re-evaluated in JS step -->
+        <!-- For now, keep it as is, or move it inside game-container if that makes more sense -->
+    </div>
+
     <div id="game-container"> <!-- Optional wrapper for better layout -->
         <div id="game-status">Loading...</div>
         <canvas id="gomoku-board" width="450" height="450"></canvas> <!-- Initial size -->

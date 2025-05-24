@@ -198,11 +198,97 @@ class TestGomoku(unittest.TestCase):
         self.assertEqual(game.board[0][1], ' ', "Cell (0,1) should be empty after reset")
         self.assertEqual(game.current_player, 'X', "Current player should be 'X' after reset")
         self.assertFalse(game.game_over, "game_over should be False after reset")
+        self.assertIsNone(game.game_mode, "game_mode should be None after default reset")
+        self.assertIsNone(game.ai_difficulty, "ai_difficulty should be None after default reset")
         
         # Check if board is entirely empty
         for r in range(game.board_size_internal):
             for c in range(game.board_size_internal):
                 self.assertEqual(game.board[r][c], ' ', f"Cell ({r},{c}) should be empty after reset.")
+
+    def test_game_mode_attributes(self):
+        game = GomokuGame(game_mode="1P", ai_difficulty="Easy")
+        self.assertEqual(game.game_mode, "1P")
+        self.assertEqual(game.ai_difficulty, "Easy")
+
+        game.reset_game(game_mode="2P", ai_difficulty="Hard") # Reset with new mode and difficulty
+        self.assertEqual(game.game_mode, "2P")
+        self.assertEqual(game.ai_difficulty, "Hard")
+        
+        game.reset_game(game_mode="1P") # Reset with new mode, difficulty becomes None by default in reset
+        self.assertEqual(game.game_mode, "1P")
+        self.assertIsNone(game.ai_difficulty) 
+
+        game.reset_game() # Reset to complete defaults
+        self.assertIsNone(game.game_mode)
+        self.assertIsNone(game.ai_difficulty)
+
+    def test_make_ai_move_easy(self):
+        # Test basic move
+        game = GomokuGame(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O' # AI is 'O'
+        initial_empty_cells = sum(row.count(' ') for row in game.board)
+        
+        move_made = game.make_ai_move_easy()
+        self.assertTrue(move_made, "AI should make a move on an empty board")
+        current_empty_cells = sum(row.count(' ') for row in game.board)
+        self.assertEqual(current_empty_cells, initial_empty_cells - 1, "One stone should be placed")
+        self.assertEqual(game.current_player, 'O', "Current player should remain AI after its move (API handles switch)")
+
+        # Test on a nearly full board
+        game.reset_game(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O'
+        # Fill all but one cell
+        last_empty_row, last_empty_col = -1, -1
+        for r in range(game.board_size_internal):
+            for c in range(game.board_size_internal):
+                if r == game.board_size_internal -1 and c == game.board_size_internal -1 :
+                    last_empty_row, last_empty_col = r,c
+                    continue # Leave last cell empty
+                game.board[r][c] = 'X' # Fill with opponent's stones
+        
+        self.assertEqual(game.board[last_empty_row][last_empty_col], ' ') # Confirm it's empty
+        move_made_on_nearly_full = game.make_ai_move_easy()
+        self.assertTrue(move_made_on_nearly_full, "AI should make a move on a nearly full board")
+        self.assertEqual(game.board[last_empty_row][last_empty_col], 'O', "AI should take the last empty cell")
+        self.assertEqual(game.current_player, 'O')
+
+        # Test on a completely full board
+        game.reset_game(game_mode="1P", ai_difficulty="Easy")
+        game.current_player = 'O'
+        for r in range(game.board_size_internal):
+            for c in range(game.board_size_internal):
+                game.board[r][c] = 'X' # Fill all cells
+        
+        move_made_on_full = game.make_ai_move_easy()
+        self.assertFalse(move_made_on_full, "AI should not make a move on a full board")
+        # Verify board is unchanged (no 'O' placed)
+        o_stones = sum(row.count('O') for row in game.board)
+        self.assertEqual(o_stones, 0, "No 'O' stones should be on a full board after AI attempts move")
+        self.assertEqual(game.current_player, 'O')
+
+        # Test randomness (simplified check - moves should generally differ)
+        # This test is probabilistic and might occasionally fail even if logic is correct.
+        # A more robust test would analyze distribution or require many trials.
+        if game.board_size_internal >= 3: # Ensure enough space for varied moves
+            game.reset_game(game_mode="1P", ai_difficulty="Easy", board_size=3) # Use smaller board for this test
+            game.current_player = 'O'
+            moves = set()
+            for _ in range(5): # Make 5 AI moves on an empty 3x3 board
+                game.reset_game(game_mode="1P", ai_difficulty="Easy", board_size=3)
+                game.current_player = 'O'
+                if game.make_ai_move_easy():
+                    # Find where the move was made
+                    for r_idx, row_val in enumerate(game.board):
+                        for c_idx, cell_val in enumerate(row_val):
+                            if cell_val == 'O':
+                                moves.add((r_idx, c_idx))
+                                break
+                        if (r_idx, c_idx) in moves: break 
+            # Expect more than 1 unique move if board is 3x3 (9 cells) and 5 attempts
+            # This is a weak test but can catch if AI always picks e.g. (0,0)
+            self.assertTrue(len(moves) > 1, "AI moves should show some variation on a 3x3 board over 5 trials")
+
 
     def test_board_size_default(self):
         game = GomokuGame()
