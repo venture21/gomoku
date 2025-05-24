@@ -79,21 +79,48 @@ class GomokuGame:
         self.ai_difficulty = ai_difficulty
 
     def make_ai_move_easy(self):
-        """Makes a move for the AI using a simple random strategy."""
-        if self.game_over: # Should not happen if called correctly
+        """Makes a move for the AI, preferring cells adjacent to existing stones."""
+        if self.game_over:
             return False
 
-        available_moves = []
+        priority_empty_cells = []
+        all_empty_cells = []
+
         for r in range(self.board_size_internal):
             for c in range(self.board_size_internal):
                 if self.board[r][c] == ' ':
-                    available_moves.append((r, c))
+                    all_empty_cells.append((r, c))
+                    is_priority = False
+                    # Check neighbors
+                    for dr in range(-1, 2):
+                        for dc in range(-1, 2):
+                            if dr == 0 and dc == 0:
+                                continue # Skip the cell itself
+                            
+                            nr, nc = r + dr, c + dc
+                            
+                            # Check bounds
+                            if 0 <= nr < self.board_size_internal and \
+                               0 <= nc < self.board_size_internal:
+                                if self.board[nr][nc] != ' ': # Neighbor has a stone
+                                    priority_empty_cells.append((r, c))
+                                    is_priority = True
+                                    break # Found a stone, (r,c) is priority
+                        if is_priority:
+                            break # Move to next empty cell
         
-        if not available_moves:
-            return False # No moves possible (should trigger draw earlier)
-            
-        row, col = random.choice(available_moves)
-        return self.make_move(row, col) # make_move uses self.current_player
+        chosen_move = None
+        if priority_empty_cells:
+            chosen_move = random.choice(priority_empty_cells)
+        elif all_empty_cells:
+            chosen_move = random.choice(all_empty_cells)
+        else:
+            return False # No moves possible
+
+        if chosen_move:
+            row, col = chosen_move
+            return self.make_move(row, col)
+        return False # Should not be reached if all_empty_cells logic is correct
 
 # Functions below are for terminal interaction and will remain separate.
 # These functions can use the DEFAULT_BOARD_SIZE or take the size from the game instance.
