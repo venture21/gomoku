@@ -53,8 +53,8 @@ class BoardWidget(QWidget):
 
         # --- Draw Rectangular Background ---
         # This rectangle covers the area of the grid.
-        painter.fillRect(self.board_origin_x, self.board_origin_y, 
-                         grid_size, grid_size, QColor(222, 184, 135))
+        painter.fillRect(int(self.board_origin_x), int(self.board_origin_y), 
+                         int(grid_size), int(grid_size), QColor(222, 184, 135))
 
         # --- Draw Grid Lines ---
         painter.save()
