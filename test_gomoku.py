@@ -715,10 +715,22 @@ class TestGomoku(unittest.TestCase):
         # Test on Empty Board
         game.reset_game(board_size=7, game_mode="1P", ai_difficulty="Hard")
         game.current_player = 'X' # AI 'X'
-        self.assertTrue(game.make_ai_move_hard())
-        # Check that a move was made (count non-empty cells)
-        stone_count = sum(row.count('X') for row in game.board)
-        self.assertEqual(stone_count, 1, "AI should make one move on empty board")
+        ai_symbol = game.current_player
+        self.assertTrue(game.make_ai_move_hard(), "AI should successfully make a move on an empty board.")
+        
+        # Check that exactly one stone of the AI's symbol was placed
+        stones_on_board = 0
+        ai_stones_count = 0
+        for r in range(game.board_size_internal):
+            for c in range(game.board_size_internal):
+                if game.board[r][c] != ' ':
+                    stones_on_board += 1
+                    if game.board[r][c] == ai_symbol:
+                        ai_stones_count +=1
+        
+        self.assertEqual(stones_on_board, 1, "There should be exactly one stone on the board.")
+        self.assertEqual(ai_stones_count, 1, f"The stone should belong to the AI ('{ai_symbol}').")
+
 
         # Test on Full Board
         game.reset_game(board_size=3, game_mode="1P", ai_difficulty="Hard") # Smaller board
