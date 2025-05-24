@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
             difficultySelectionDiv.style.display = ''; // Show difficulty options
             // Update currentDifficulty based on which radio is checked
             if (radioDifficultyEasy.checked) currentDifficulty = 'Easy';
-            // Medium and Hard are disabled, so no need to check them for now
+            else if (radioDifficultyMedium.checked) currentDifficulty = 'Medium';
+            // else if (radioDifficultyHard.checked) currentDifficulty = 'Hard'; // For later
         } else if (radio2PMode.checked) { // radio2PMode is currently disabled in HTML
             currentGameMode = '2P';
             difficultySelectionDiv.style.display = 'none'; // Hide difficulty options for 2P
@@ -46,11 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add event listeners to difficulty radio buttons
     radioDifficultyEasy.addEventListener('change', () => {
         if (radioDifficultyEasy.checked) currentDifficulty = 'Easy';
-        updateModeSelectionState(); // Call to log and potentially update other UI in future
+        updateModeSelectionState(); 
+        console.log(`Mode: ${currentGameMode}, Difficulty: ${currentDifficulty}`);
     });
-    // Event listeners for Medium/Hard can be added if/when they are enabled
-    // if(radioDifficultyMedium) radioDifficultyMedium.addEventListener('change', ...);
-    // if(radioDifficultyHard) radioDifficultyHard.addEventListener('change', ...);
+    if (radioDifficultyMedium) { // Check if element exists as it was previously disabled
+        radioDifficultyMedium.addEventListener('change', () => {
+            if (radioDifficultyMedium.checked) {
+                currentDifficulty = 'Medium';
+            }
+            updateModeSelectionState();
+            console.log(`Mode: ${currentGameMode}, Difficulty: ${currentDifficulty}`);
+        });
+    }
+    // if(radioDifficultyHard) radioDifficultyHard.addEventListener('change', ...); // For future Hard mode
 
 
     async function fetchGameStateAndDraw() {
@@ -233,20 +242,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     newGameButton.addEventListener('click', async () => {
-        // Check selected mode and difficulty
-        if (currentGameMode === '1P' && currentDifficulty === 'Easy') {
-            // Proceed with Easy 1P mode
-            console.log(`Starting new game: Mode=${currentGameMode}, Difficulty=${currentDifficulty}`);
-        } else {
-            // Alert for unimplemented modes/difficulties and default or prevent game start
-            alert('Selected mode or difficulty is not yet implemented. The game will start in 1-Player Easy mode (default backend behavior for now).');
-            // For now, we'll let it proceed, and backend will handle it as a default game.
-            // If strict enforcement on frontend is needed:
-            // if (!(currentGameMode === '1P' && currentDifficulty === 'Easy')) {
-            //    alert('Only 1-Player Easy mode is currently implemented.');
-            //    return; // Stop game start
-            // }
+        // Log selected mode and difficulty
+        console.log(`Starting new game: Mode=${currentGameMode}, Difficulty=${currentDifficulty}`);
+
+        // Alert for unimplemented modes/difficulties - keeping for Hard/2P but not for Medium
+        if ( (currentGameMode === '1P' && currentDifficulty === 'Hard') ||
+             (currentGameMode === '2P') ) {
+            alert('Selected mode or difficulty is not yet implemented. Defaulting to available options or backend default.');
+            // Note: Backend will still receive selected values.
+            // If strict prevention is needed for these modes, add a 'return;' here.
         }
+
 
         try {
             const response = await fetch('/api/new_game', {

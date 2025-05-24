@@ -387,5 +387,208 @@ class TestGomoku(unittest.TestCase):
         self.assertEqual(game.board_size_internal, DEFAULT_BOARD_SIZE, f"Default board size should be {DEFAULT_BOARD_SIZE}")
         self.assertEqual(len(game.board), DEFAULT_BOARD_SIZE)
 
+    def test_get_lines_for_cell(self):
+        game = GomokuGame(board_size=15) # Standard 15x15 board
+        win_len = game.WIN_LENGTH
+
+        # Test center cell (e.g., 7,7)
+        lines_center = game._get_lines_for_cell(7, 7)
+        self.assertEqual(len(lines_center), 4 * win_len, 
+                         f"Center cell should have {4 * win_len} potential lines")
+        for line in lines_center:
+            self.assertEqual(len(line), win_len, "Each line should have WIN_LENGTH coordinates")
+            for r, c in line:
+                self.assertTrue(0 <= r < game.board_size_internal and 0 <= c < game.board_size_internal, 
+                                "All coordinates in a line must be valid")
+
+        # Test edge cell (e.g., 0,7) - not a corner
+        lines_edge = game._get_lines_for_cell(0, 7)
+        # Horizontal: win_len lines
+        # Vertical: 1 line (if offset allows, i.e. cell is one of the 5 points)
+        # Diagonal TL-BR: (win_len - 0) = 5 lines starting from (0,7), (0,6)...(0,3) if offset makes (0,7) the first point.
+        #    offset = 0: (0,7)...(4,11)
+        #    offset = 1: (-1,6)...(3,10) - invalid
+        #    This depends on how many of the 5 possible start positions for a line of length 5,
+        #    that *includes* (0,7), are valid.
+        #    Horizontal: 5 lines. (0,7) can be 1st, 2nd, 3rd, 4th, 5th point.
+        #    Vertical: (0,7) to (4,7) is 1 line.
+        #    Diag TL-BR: (0,7)-(4,11), (-1,6)-(3,10)X, (-2,5)-(2,9)X, (-3,4)-(1,8)X, (-4,3)-(0,7)X.
+        #              Actually, it's simpler: how many lines of length 5 can contain (0,7)?
+        #              Horizontal: 5. Vertical: 1. Diag TL-BR: 1. Diag TR-BL: 1. Total = 8.
+        #              This needs to be calculated more carefully. Let's assume the method is correct.
+        #              For (0,7) on 15x15 with WIN_LENGTH=5:
+        #              H: 5 lines. V: 1 line. D1 (TL-BR): 1 line. D2 (TR-BL): min(0+1, 15-7, 5, 0+1+15-7-5+1) = 1 line.
+        #              This is not right. The logic is: for each direction, for each of the 5 offsets, is the line valid?
+        #              H: [(0,3)-(0,7)] to [(0,7)-(0,11)] -> 5 lines
+        #              V: [(0,7)-(4,7)] -> 1 line
+        #              D1: [(0,7)-(4,11)] -> 1 line
+        #              D2: [(0,7)-(-4,3)]X ... no, it's (0,7) to (4,3) -> 1 line.
+        #              Total should be 5+1+1+1 = 8.
+        self.assertTrue(len(lines_edge) < 4 * win_len, "Edge cell should have fewer lines than center")
+        self.assertEqual(len(lines_edge), 8, "Cell (0,7) on 15x15 should have 8 lines of length 5 through it")
+
+
+        # Test corner cell (0,0)
+        lines_corner = game._get_lines_for_cell(0, 0)
+        # H: 1 line. V: 1 line. D1 (TL-BR): 1 line. D2 (TR-BL): 0 lines. Total = 3.
+        self.assertEqual(len(lines_corner), 3, "Corner cell (0,0) should have 3 lines of length 5 through it")
+
+    def test_evaluate_line_segment(self):
+        game = GomokuGame(board_size=5) # Use 5x5 board
+        ai_symbol = 'O'
+        opponent_symbol = 'X'
+
+        # All empty
+        line_coords_empty = [(0,0), (0,1), (0,2), (0,3), (0,4)]
+        game.board = [[' '] * 5 for _ in range(5)]
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 0, 'opponent_stones': 0, 'empty_cells': 5})
+
+        # 1 AI stone, 4 empty
+        game.board[0][0] = ai_symbol
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 1, 'opponent_stones': 0, 'empty_cells': 4})
+
+        # 3 AI stones, 2 empty ("open three" if this is the line)
+        game.board[0][0] = ai_symbol; game.board[0][1] = ai_symbol; game.board[0][2] = ai_symbol
+        game.board[0][3] = ' '; game.board[0][4] = ' '
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 3, 'opponent_stones': 0, 'empty_cells': 2})
+        
+        # 4 AI stones, 1 empty
+        game.board[0][3] = ai_symbol
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 4, 'opponent_stones': 0, 'empty_cells': 1})
+
+        # 5 AI stones (win)
+        game.board[0][4] = ai_symbol
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 5, 'opponent_stones': 0, 'empty_cells': 0})
+
+        # 1 Opponent stone, 4 empty
+        game.board = [[' '] * 5 for _ in range(5)]
+        game.board[0][0] = opponent_symbol
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 0, 'opponent_stones': 1, 'empty_cells': 4})
+
+        # 3 Opponent stones, 2 empty
+        game.board[0][0] = opponent_symbol; game.board[0][1] = opponent_symbol; game.board[0][2] = opponent_symbol
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 0, 'opponent_stones': 3, 'empty_cells': 2})
+
+        # Mixed: 2 AI, 1 Opponent, 2 Empty
+        game.board = [[' '] * 5 for _ in range(5)]
+        game.board[0][0] = ai_symbol; game.board[0][1] = ai_symbol
+        game.board[0][2] = opponent_symbol
+        counts = game._evaluate_line_segment(line_coords_empty, ai_symbol)
+        self.assertEqual(counts, {'player_stones': 2, 'opponent_stones': 1, 'empty_cells': 2})
+
+    def test_make_ai_move_normal(self):
+        # Test AI Winning Move
+        game = GomokuGame(board_size=5, game_mode="1P", ai_difficulty="Normal")
+        game.current_player = 'O' # AI is 'O'
+        game.board = [
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', 'O', 'O', 'O', 'O'], # AI needs to play at (1,0) or (1,4)
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']
+        ]
+        game.board[1][0] = ' ' # Ensure one winning spot is open
+        self.assertTrue(game.make_ai_move_normal())
+        self.assertEqual(game.board[1][0], 'O', "AI should make winning move at (1,0)")
+        
+        game.reset_game(board_size=5, game_mode="1P", ai_difficulty="Normal")
+        game.current_player = 'O'
+        game.board = [
+            [' ', 'O', 'O', 'O', 'O'],
+            [' ', ' ', ' ', ' ', ' '], # AI needs to play at (0,0)
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']
+        ]
+        game.board[0][0] = ' '
+        game.board[0][4] = 'X' # Block one side to force win
+        self.assertTrue(game.make_ai_move_normal())
+        self.assertEqual(game.board[0][0], 'O', "AI should make winning move at (0,0)")
+
+
+        # Test AI Blocks Opponent's Winning Move
+        game.reset_game(board_size=5, game_mode="1P", ai_difficulty="Normal")
+        game.current_player = 'O' # AI is 'O'
+        game.board = [
+            [' ', ' ', ' ', ' ', ' '],
+            ['X', 'X', 'X', 'X', ' '], # Opponent 'X' needs (1,4) to win
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']
+        ]
+        self.assertTrue(game.make_ai_move_normal())
+        self.assertEqual(game.board[1][4], 'O', "AI should block opponent's win at (1,4)")
+
+        # Test AI Creates "Open Three"
+        game.reset_game(board_size=5, game_mode="1P", ai_difficulty="Normal")
+        game.current_player = 'O' # AI is 'O'
+        game.board = [ # AI is 'O'. Needs _ O O _ _ pattern.
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', 'O', 'O', ' ', ' '], # AI plays at (1,0) or (1,3) or (1,4)
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']
+        ]
+        self.assertTrue(game.make_ai_move_normal())
+        # Check if an open three was created. The AI could play at (1,0), (1,3), or (1,4)
+        # For simplicity, we check if one of these was chosen and creates an open three.
+        # This is a bit more complex to assert precisely without knowing which random choice was made.
+        # We'll check if *any* move resulted in an open three.
+        ai_move_made = False
+        for r in range(5):
+            for c in range(5):
+                if game.board[r][c] == 'O' and not (r==1 and (c==1 or c==2)): # Found the AI's new move
+                    # Check if this move created an open three
+                    lines_through_move = game._get_lines_for_cell(r,c)
+                    open_three_found = False
+                    for line in lines_through_move:
+                        eval_info = game._evaluate_line_segment(line, 'O')
+                        if eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2:
+                            open_three_found = True
+                            break
+                    if open_three_found:
+                        ai_move_made = True; break
+            if ai_move_made: break
+        self.assertTrue(ai_move_made, "AI should make a move to create an open three")
+
+
+        # Test AI Blocks Opponent's "Open Three"
+        game.reset_game(board_size=5, game_mode="1P", ai_difficulty="Normal")
+        game.current_player = 'O' # AI is 'O'
+        game.board = [ # Opponent 'X' needs _ X X _ _ pattern. AI 'O' should block.
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', 'X', 'X', ' ', ' '], # Opponent can play at (1,0), (1,3), (1,4)
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']
+        ]
+        self.assertTrue(game.make_ai_move_normal())
+        # Check if AI blocked one of the opponent's potential open three spots
+        self.assertTrue(game.board[1][0] == 'O' or game.board[1][3] == 'O' or game.board[1][4] == 'O',
+                        "AI should block opponent's open three")
+
+        # Test Fallback to make_ai_move_easy (on an empty board)
+        game.reset_game(board_size=5, game_mode="1P", ai_difficulty="Normal")
+        game.current_player = 'O' # AI is 'O'
+        initial_empty_count = sum(row.count(' ') for row in game.board)
+        self.assertTrue(game.make_ai_move_normal())
+        final_empty_count = sum(row.count(' ') for row in game.board)
+        self.assertEqual(final_empty_count, initial_empty_count - 1, 
+                         "AI should make a move (fallback to easy) on empty board")
+
+        # Test on Full Board
+        game.reset_game(board_size=3, game_mode="1P", ai_difficulty="Normal") # Smaller board
+        game.current_player = 'O'
+        game.board = [['X','O','X'],['O','X','O'],['X','O','X']]
+        self.assertFalse(game.make_ai_move_normal(), "AI should not move on a full board")
+
+
 if __name__ == '__main__':
     unittest.main()
