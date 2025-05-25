@@ -299,15 +299,26 @@ class GomokuGame:
                 line_coords = [(r, c + i) for i in range(self.WIN_LENGTH)]
                 eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
                 
-                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
-                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+                score_for_this_line = 0
+                if eval_info['player_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = 100000
+                elif eval_info['opponent_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = -100000
+                elif eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = -10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = -400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = -20
                 
-                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
-                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
-                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
-                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
-                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
-                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+                total_score += score_for_this_line
+                if abs(score_for_this_line) == 100000: return score_for_this_line
 
         # Vertical lines
         for c in range(self.board_size_internal):
@@ -315,15 +326,26 @@ class GomokuGame:
                 line_coords = [(r + i, c) for i in range(self.WIN_LENGTH)]
                 eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
 
-                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
-                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
+                score_for_this_line = 0
+                if eval_info['player_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = 100000
+                elif eval_info['opponent_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = -100000
+                elif eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = -10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = -400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = -20
 
-                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
-                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
-                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
-                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
-                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
-                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+                total_score += score_for_this_line
+                if abs(score_for_this_line) == 100000: return score_for_this_line
 
         # Diagonal (Top-Left to Bottom-Right)
         for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
@@ -331,15 +353,26 @@ class GomokuGame:
                 line_coords = [(r + i, c + i) for i in range(self.WIN_LENGTH)]
                 eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
 
-                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
-                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
-
-                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
-                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
-                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
-                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
-                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
-                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+                score_for_this_line = 0
+                if eval_info['player_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = 100000
+                elif eval_info['opponent_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = -100000
+                elif eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = -10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = -400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = -20
+                
+                total_score += score_for_this_line
+                if abs(score_for_this_line) == 100000: return score_for_this_line
                 
         # Diagonal (Top-Right to Bottom-Left)
         for r in range(self.board_size_internal - self.WIN_LENGTH + 1):
@@ -347,15 +380,26 @@ class GomokuGame:
                 line_coords = [(r + i, c - i) for i in range(self.WIN_LENGTH)]
                 eval_info = self._evaluate_line_segment_on_board(line_coords, ai_player_symbol, board_state)
 
-                if eval_info['player_stones'] == self.WIN_LENGTH: return 100000
-                if eval_info['opponent_stones'] == self.WIN_LENGTH: return -100000
-
-                if eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1: total_score += 5000
-                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1: total_score -= 10000
-                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2: total_score += 200
-                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2: total_score -= 400
-                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3: total_score += 10
-                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3: total_score -= 20
+                score_for_this_line = 0
+                if eval_info['player_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = 100000
+                elif eval_info['opponent_stones'] == self.WIN_LENGTH:
+                    score_for_this_line = -100000
+                elif eval_info['player_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = 5000
+                elif eval_info['opponent_stones'] == 4 and eval_info['empty_cells'] == 1:
+                    score_for_this_line = -10000
+                elif eval_info['player_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = 200
+                elif eval_info['opponent_stones'] == 3 and eval_info['empty_cells'] == 2:
+                    score_for_this_line = -400
+                elif eval_info['player_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = 10
+                elif eval_info['opponent_stones'] == 2 and eval_info['empty_cells'] == 3:
+                    score_for_this_line = -20
+                
+                total_score += score_for_this_line
+                if abs(score_for_this_line) == 100000: return score_for_this_line
                 
         return total_score
 
