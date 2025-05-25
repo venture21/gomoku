@@ -1,2 +1,2 @@
-# viveCoding
-생성형 AI로 만드는 코딩입니다.
+# Gomoku
+Jules로 만든 오목 프로그램 입니다.
